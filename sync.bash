@@ -7,6 +7,7 @@ PORT="22"
 
 EXCLUDES=(
     ".git/"
+    ".gitignore"
     ".mypy_cache/"
     ".DS_Store"
 )
