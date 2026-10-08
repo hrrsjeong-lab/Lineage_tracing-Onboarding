@@ -15,11 +15,12 @@ product = $(foreach x,$1,$(addprefix $x.,$2))
 # References
 DARLIN_DIR = /home/Store/MethylTree/metadata/DARLIN_HSC/downstream_R
 DARLIN_SAMPLE = $(DARLIN_DIR)/df_sample/sample_sheet.tsv.gz
+DARLIN_H5AD = $(addprefix $(DARLIN_DIR)/out_dir/mouse_,$(addsuffix _neutral_thresh_DARLIN_HSC_BM_0.66_0.92_readcutoff3_minCov0.1_met_ExcludeSex0.h5ad,$(MICE)))
 
 # Constants
 MICE = LL731 LL901 LL653E1 LL653E6
 TEST = LL653E1
-OPTIMAL = LL731
+OPTIMAL = Darlin
 
 # Options
 LOGGING = 1>$(abspath $@).log 2>&1
@@ -41,8 +42,8 @@ optimal: step01-optimal
 Output/01_Scanpy_import:
 	mkdir -p $@
 
-Output/01_Scanpy_import/%.h5ad: Python/import_h5ad.py $(DARLIN_DIR)/out_dir/mouse_%_neutral_thresh_DARLIN_HSC_BM_0.66_0.92_readcutoff3_minCov0.1_met_ExcludeSex0.h5ad $(DARLIN_SAMPLE) | Output/01_Scanpy_import
-	$(SLURM) $(PYTHON) $(abspath $^ $@) --name $* --clone "large_clone_id" $(LOGGING)
+Output/01_Scanpy_import/Darlin.h5ad: Python/import_h5ad.py $(DARLIN_H5AD) $(DARLIN_SAMPLE) | Output/01_Scanpy_import
+	$(SLURM) $(PYTHON) $(abspath $^ $@) --names $(MICE) --clone "large_clone_id" --join "outer" $(LOGGING)
 
 step01-test: Output/01_Scanpy_import/$(TEST).h5ad
 step01-optimal: Output/01_Scanpy_import/$(OPTIMAL).h5ad
