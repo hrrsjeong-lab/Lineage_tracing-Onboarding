@@ -20,6 +20,10 @@ path_effects = [matplotlib.patheffects.withStroke(linewidth=5, foreground="white
 anndata_compressions = {"compression": "gzip", "compression_opts": 9}
 missing_values = {"", "nan", "nan0", "NaN", "None"}
 
+sample_column = "Individual"
+covered_column = "Covered"
+methylation_column = "Methylation"
+
 
 def check_suffix(filename: str, suffixes: typing.Set[str]) -> None:
     filename = filename.lower()
