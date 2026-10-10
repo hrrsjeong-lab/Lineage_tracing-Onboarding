@@ -33,11 +33,11 @@ all: test optimal step01
 clean:
 .PHONY: clean
 
-test: step01-test
+test: step01-test step02-test
 	@date | mail -s "[Slurm] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: test
 
-optimal: step01-optimal
+optimal: step01-optimal step02-optimal
 	@date | mail -s "[Slurm] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: optimal
 
@@ -53,5 +53,20 @@ Output/01_Scanpy_import/Test.h5ad: Python/import_h5ad.py /home/Store/MethylTree/
 
 step01-test: Output/01_Scanpy_import/Test.h5ad
 step01-optimal: Output/01_Scanpy_import/$(OPTIMAL).h5ad
-step01: $(addprefix Output/01_Scanpy_import/,$(addsuffix .h5ad,$(MICE)))
+step01: $(addprefix Output/01_Scanpy_import/,$(addsuffix .h5ad,$(DATASETS)))
 .PHONY: step01-test step01-optimal step01
+
+# Step 02 (QC covered regions)
+Output/02_QC_covered_regions:
+	mkdir -p $@
+
+Output/02_QC_covered_regions/%.cell.tsv.gz: Python/qc_covered_regions.py Output/01_Scanpy_import/%.h5ad | Output/02_QC_covered_regions
+	$(SLURM) $(PYTHON) $(abspath $^ $@) --target "cell" $(LOGGING)
+
+Output/02_QC_covered_regions/%.region.tsv.gz: Python/qc_covered_regions.py Output/01_Scanpy_import/%.h5ad | Output/02_QC_covered_regions
+	$(SLURM) $(PYTHON) $(abspath $^ $@) --target "region" $(LOGGING)
+
+step02-test: Output/02_QC_covered_regions/Test.cell.tsv.gz Output/02_QC_covered_regions/Test.region.tsv.gz
+step02-optimal: Output/02_QC_covered_regions/$(OPTIMAL).cell.tsv.gz Output/02_QC_covered_regions/$(OPTIMAL).region.tsv.gz
+step02: $(addprefix Output/02_QC_covered_regions/,$(addsuffix .cell.tsv.gz,$(DATASETS))) $(addprefix Output/02_QC_covered_regions/,$(addsuffix .region.tsv.gz,$(DATASETS)))
+.PHONY: step02-test step02-optimal step02
