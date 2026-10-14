@@ -18,6 +18,7 @@ DARLIN_SAMPLE = $(DARLIN_DIR)/df_sample/sample_sheet.tsv.gz
 DARLIN_H5AD = $(addprefix $(DARLIN_DIR)/out_dir/mouse_,$(addsuffix _neutral_thresh_DARLIN_HSC_BM_0.66_0.92_readcutoff3_minCov0.1_met_ExcludeSex0.h5ad,$(MICE)))
 
 # Constants
+PROJECT = Lineage
 MICE = LL731 LL901 LL653E1 LL653E6
 OPTIMAL = Darlin
 DATASETS = Test Darlin
@@ -27,18 +28,18 @@ LOGGING = 1>$(abspath $@).log 2>&1
 LOGGING_DIR = 1>$(abspath $(@D)).log 2>&1
 
 all: test optimal step01
-	@date | mail -s "[Slurm] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
+	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: all
 
 clean:
 .PHONY: clean
 
 test: step01-test step02-test
-	@date | mail -s "[Slurm] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
+	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: test
 
 optimal: step01-optimal step02-optimal
-	@date | mail -s "[Slurm] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
+	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: optimal
 
 # Step 01 (Scanpy import)
@@ -60,13 +61,19 @@ step01: $(addprefix Output/01_Scanpy_import/,$(addsuffix .h5ad,$(DATASETS)))
 Output/02_QC_covered_regions:
 	mkdir -p $@
 
+Output/02_QC_covered_regions/Figures:
+	mkdir -p $@
+
 Output/02_QC_covered_regions/%.cell.tsv.gz: Python/qc_covered_regions.py Output/01_Scanpy_import/%.h5ad | Output/02_QC_covered_regions
 	$(SLURM) $(PYTHON) $(abspath $^ $@) --target "cell" $(LOGGING)
 
 Output/02_QC_covered_regions/%.region.tsv.gz: Python/qc_covered_regions.py Output/01_Scanpy_import/%.h5ad | Output/02_QC_covered_regions
 	$(SLURM) $(PYTHON) $(abspath $^ $@) --target "region" $(LOGGING)
 
-step02-test: Output/02_QC_covered_regions/Test.cell.tsv.gz Output/02_QC_covered_regions/Test.region.tsv.gz
-step02-optimal: Output/02_QC_covered_regions/$(OPTIMAL).cell.tsv.gz Output/02_QC_covered_regions/$(OPTIMAL).region.tsv.gz
+Output/02_QC_covered_regions/Figures/%.zip: Python/draw_covered_regions.py Output/02_QC_covered_regions/%.cell.tsv.gz Output/02_QC_covered_regions/%.region.tsv.gz | Output/02_QC_covered_regions/Figures
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+
+step02-test: Output/02_QC_covered_regions/Test.cell.tsv.gz Output/02_QC_covered_regions/Test.region.tsv.gz Output/02_QC_covered_regions/Figures/Test.zip
+step02-optimal: Output/02_QC_covered_regions/$(OPTIMAL).cell.tsv.gz Output/02_QC_covered_regions/$(OPTIMAL).region.tsv.gz Output/02_QC_covered_regions/Figures/$(OPTIMAL).zip
 step02: $(addprefix Output/02_QC_covered_regions/,$(addsuffix .cell.tsv.gz,$(DATASETS))) $(addprefix Output/02_QC_covered_regions/,$(addsuffix .region.tsv.gz,$(DATASETS)))
 .PHONY: step02-test step02-optimal step02
