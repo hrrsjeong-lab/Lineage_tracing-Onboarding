@@ -22,23 +22,27 @@ PROJECT = Lineage
 MICE = LL731 LL901 LL653E1 LL653E6
 OPTIMAL = Darlin
 DATASETS = Test Darlin
+SEX_MODES = IncludeSex ExcludeSex
 
 # Options
+EXCLUDE_IncludeSex =
+EXCLUDE_ExcludeSex = chrX chrY
+METHYLTREE_OPTIONS = --individual $(word 1,$(subst ., ,$*)) --clone "large_clone_id" --exclude $(EXCLUDE_$(word 2,$(subst ., ,$*)))
 LOGGING = 1>$(abspath $@).log 2>&1
 LOGGING_DIR = 1>$(abspath $(@D)).log 2>&1
 
-all: test optimal step01
+all: test optimal step01 step02 step03
 	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: all
 
 clean:
 .PHONY: clean
 
-test: step01-test step02-test
+test: step01-test step02-test step03-test
 	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: test
 
-optimal: step01-optimal step02-optimal
+optimal: step01-optimal step02-optimal step03-optimal
 	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: optimal
 
@@ -75,5 +79,35 @@ Output/02_QC_covered_regions/Figures/%.zip: Python/draw_covered_regions.py Outpu
 
 step02-test: Output/02_QC_covered_regions/Test.cell.tsv.gz Output/02_QC_covered_regions/Test.region.tsv.gz Output/02_QC_covered_regions/Figures/Test.zip
 step02-optimal: Output/02_QC_covered_regions/$(OPTIMAL).cell.tsv.gz Output/02_QC_covered_regions/$(OPTIMAL).region.tsv.gz Output/02_QC_covered_regions/Figures/$(OPTIMAL).zip
-step02: $(addprefix Output/02_QC_covered_regions/,$(addsuffix .cell.tsv.gz,$(DATASETS))) $(addprefix Output/02_QC_covered_regions/,$(addsuffix .region.tsv.gz,$(DATASETS)))
+step02: $(addprefix Output/02_QC_covered_regions/,$(addsuffix .cell.tsv.gz,$(DATASETS))) $(addprefix Output/02_QC_covered_regions/,$(addsuffix .region.tsv.gz,$(DATASETS))) $(addprefix Output/02_QC_covered_regions/Figures/,$(addsuffix .zip,$(DATASETS)))
 .PHONY: step02-test step02-optimal step02
+
+# Step 03 (MethylTree per individual)
+Output/03_MethylTree:
+	mkdir -p $@
+
+Output/03_MethylTree/Figures:
+	mkdir -p $@
+
+Output/03_MethylTree/Darlin.%.h5ad: Python/run_methyltree.py Output/01_Scanpy_import/Darlin.h5ad | Output/03_MethylTree
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(METHYLTREE_OPTIONS) $(LOGGING)
+
+Output/03_MethylTree/Test.%.h5ad: Python/run_methyltree.py Output/01_Scanpy_import/Test.h5ad | Output/03_MethylTree
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(METHYLTREE_OPTIONS) $(LOGGING)
+
+Output/03_MethylTree/Darlin.tsv.gz: Python/summarize_methyltree.py $(addprefix Output/03_MethylTree/Darlin.,$(addsuffix .h5ad,$(call product,$(MICE),$(SEX_MODES)))) | Output/03_MethylTree
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+
+Output/03_MethylTree/Test.tsv.gz: Python/summarize_methyltree.py $(addprefix Output/03_MethylTree/Test.LL653E1.,$(addsuffix .h5ad,$(SEX_MODES))) | Output/03_MethylTree
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+
+Output/03_MethylTree/Figures/Darlin.zip: Python/draw_methyltree.py $(addprefix Output/03_MethylTree/Darlin.,$(addsuffix .h5ad,$(call product,$(MICE),$(SEX_MODES)))) | Output/03_MethylTree/Figures
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+
+Output/03_MethylTree/Figures/Test.zip: Python/draw_methyltree.py $(addprefix Output/03_MethylTree/Test.LL653E1.,$(addsuffix .h5ad,$(SEX_MODES))) | Output/03_MethylTree/Figures
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+
+step03-test: Output/03_MethylTree/Test.tsv.gz Output/03_MethylTree/Figures/Test.zip
+step03-optimal: Output/03_MethylTree/$(OPTIMAL).tsv.gz Output/03_MethylTree/Figures/$(OPTIMAL).zip
+step03: $(addprefix Output/03_MethylTree/,$(addsuffix .tsv.gz,$(DATASETS))) $(addprefix Output/03_MethylTree/Figures/,$(addsuffix .zip,$(DATASETS)))
+.PHONY: step03-test step03-optimal step03
