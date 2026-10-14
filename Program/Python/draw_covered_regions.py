@@ -147,8 +147,13 @@ if __name__ == "__main__":
             matplotlib.pyplot.tight_layout()
             step00.save_figure(fig, f"{directory}/Region-{region_test}-ECDF", figure_list)
 
+        x_edges = numpy.arange(region_data["n_covered_cells"].min() - 0.5, region_data["n_covered_cells"].max() + 1.5, 1.0)
+        y_edges = numpy.histogram_bin_edges(region_data["mean_methylation"].dropna(), bins=50)
+        count_max = max(numpy.histogram2d(data["n_covered_cells"], data["mean_methylation"], bins=(x_edges, y_edges))[0].max() for _, data in region_data.dropna(subset=["mean_methylation"]).groupby(step00.sample_column))
+        print("2DHist bins:", len(x_edges) - 1, "x", len(y_edges) - 1, "/ color range: 0 -", count_max)
+
         g = seaborn.FacetGrid(data=region_data, col=step00.sample_column, col_order=individual_list, col_wrap=min(2, len(individual_list)), height=12, aspect=1)
-        g.map_dataframe(seaborn.histplot, x="n_covered_cells", y="mean_methylation", discrete=(True, False), bins=50, cmap="Blues", cbar=True)
+        g.map_dataframe(seaborn.histplot, x="n_covered_cells", y="mean_methylation", bins=(x_edges, y_edges), cmap="Blues", vmin=0, vmax=count_max, cbar=True)
         g.set_titles("{col_name}")
         g.set_axis_labels("n covered cells", "mean methylation")
         g.tight_layout()
