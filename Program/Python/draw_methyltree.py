@@ -13,6 +13,7 @@ import numpy
 import pandas
 import scipy.stats
 import seaborn
+import statsmodels.nonparametric.smoothers_lowess
 import tqdm
 import step00
 
@@ -32,6 +33,23 @@ def clone_codes(clones: pandas.Series) -> typing.Tuple[numpy.ndarray, typing.Lis
     return codes, clone_order
 
 
+def mantel_spearman_pvalue(matrix_a: numpy.ndarray, matrix_b: numpy.ndarray, permutations: int, seed: int) -> float:
+    upper = numpy.triu_indices_from(matrix_a, k=1)
+    rank_a = numpy.zeros(matrix_a.shape, dtype=float)
+    rank_a[upper] = scipy.stats.rankdata(matrix_a[upper])
+    rank_a = rank_a + rank_a.T
+    rank_b = scipy.stats.rankdata(matrix_b[upper])
+    observed = abs(numpy.corrcoef(rank_a[upper], rank_b)[0, 1])
+
+    generator = numpy.random.default_rng(seed)
+    count = 0
+    for _ in range(permutations):
+        permutation = generator.permutation(matrix_a.shape[0])
+        if abs(numpy.corrcoef(rank_a[permutation][:, permutation][upper], rank_b)[0, 1]) >= observed:
+            count += 1
+    return (count + 1) / (permutations + 1)
+
+
 def draw_ordered_heatmap(matrix: numpy.ndarray, codes: numpy.ndarray, n_clones: int, cmap: str, vmin: float, vmax: float, title: str, colorbar_label: str) -> matplotlib.figure.Figure:
     clone_colors = [step00.missing_color] + [color for _, color in zip(range(n_clones), itertools.cycle(matplotlib.colormaps["tab20"].colors))]
     clone_cmap = matplotlib.colors.ListedColormap(clone_colors)
@@ -43,9 +61,9 @@ def draw_ordered_heatmap(matrix: numpy.ndarray, codes: numpy.ndarray, n_clones: 
     ax = fig.add_subplot(grid[1, 1])
     cax = fig.add_subplot(grid[1, 2])
 
-    image = ax.imshow(matrix, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto", interpolation="none")
-    ax_top.imshow(codes[numpy.newaxis, :], cmap=clone_cmap, vmin=0, vmax=n_clones, aspect="auto", interpolation="none")
-    ax_left.imshow(codes[:, numpy.newaxis], cmap=clone_cmap, vmin=0, vmax=n_clones, aspect="auto", interpolation="none")
+    image = ax.imshow(matrix, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto", interpolation="none", rasterized=True)
+    ax_top.imshow(codes[numpy.newaxis, :], cmap=clone_cmap, vmin=0, vmax=n_clones, aspect="auto", interpolation="none", rasterized=True)
+    ax_left.imshow(codes[:, numpy.newaxis], cmap=clone_cmap, vmin=0, vmax=n_clones, aspect="auto", interpolation="none", rasterized=True)
     fig.colorbar(image, cax=cax, label=colorbar_label)
 
     for a in tqdm.tqdm([ax, ax_top, ax_left]):
@@ -64,11 +82,14 @@ if __name__ == "__main__":
 
     parser.add_argument("input", help="Input MethylTree H5AD files from run_methyltree.py", type=str, nargs="+")
     parser.add_argument("output", help="Output ZIP file", type=str)
+    parser.add_argument("--permutations", help="Number of Mantel permutations", type=int, default=999)
+    parser.add_argument("--seed", help="Random seed for Mantel permutations", type=int, default=42)
 
     args = parser.parse_args()
 
     step00.check_suffixes(args.input, {".h5ad"})
     step00.check_suffix(args.output, {".zip"})
+    assert (args.permutations > 0), "Permutations must be positive!!"
 
     adatas: typing.List[anndata.AnnData] = list()
     clone_tables: typing.List[pandas.DataFrame] = list()
@@ -119,7 +140,20 @@ if __name__ == "__main__":
             step00.save_figure(draw_ordered_heatmap(shared_sites, codes, len(clone_order), "Blues", 0, numpy.percentile(shared_sites[upper], 99.5), title, "Shared covered regions"), f"{directory}/{name}-SharedSites-Heatmap", figure_list)
 
             pair_data = pandas.DataFrame({"Shared regions": shared_sites[upper], "Corrected similarity": similarity[upper], "Pair": numpy.where((codes[upper[0]] > 0) & (codes[upper[0]] == codes[upper[1]]), "Same clone", "Different clone")})
-            correlation = scipy.stats.spearmanr(pair_data["Shared regions"], pair_data["Corrected similarity"])[0]
+            correlation, p_value = scipy.stats.spearmanr(pair_data["Shared regions"], pair_data["Corrected similarity"])
+            mantel_p_value = mantel_spearman_pvalue(shared_sites, similarity, args.permutations, args.seed)
+            print(name, "pairs:", pair_data["Pair"].value_counts().to_dict(), "/ Spearman r:", correlation, "/ p (pairs as independent):", p_value, "/ Mantel p:", mantel_p_value)
+
+            fig, ax = matplotlib.pyplot.subplots(figsize=(24, 18))
+            seaborn.scatterplot(data=pair_data, x="Shared regions", y="Corrected similarity", hue="Pair", hue_order=["Different clone", "Same clone"], palette={"Different clone": step00.missing_color, "Same clone": palette[individual]}, s=40, linewidth=0, rasterized=True, ax=ax)
+            for pair, color in [("Different clone", "dimgray"), ("Same clone", palette[individual])]:
+                trend_data = pair_data.loc[pair_data["Pair"] == pair]
+                if len(trend_data) < 3:
+                    continue
+                trend = statsmodels.nonparametric.smoothers_lowess.lowess(trend_data["Corrected similarity"], trend_data["Shared regions"], frac=0.3, delta=0.01 * numpy.ptp(trend_data["Shared regions"]))
+                ax.plot(trend[:, 0], trend[:, 1], color=color, linewidth=4, path_effects=step00.path_effects, zorder=3)
+            seaborn.move_legend(ax, loc="upper right", fontsize="x-small", title_fontsize="x-small")
+            matplotlib.pyplot.title(f"{individual} / {exclude_label(parameters['exclude'])}\nSpearman r={correlation:.3f}, p={p_value:.2e} ({len(pair_data)} pairs as independent)\nMantel p={mantel_p_value:.3f} ({args.permutations} permutations)", fontsize="x-small")
             print(name, "pairs:", pair_data["Pair"].value_counts().to_dict(), "/ Spearman r (shared regions, similarity):", correlation)
 
             fig, ax = matplotlib.pyplot.subplots(figsize=(24, 18))
@@ -146,7 +180,7 @@ if __name__ == "__main__":
                 ax.set_xlabel("")
                 ax.set_ylabel(f"Per-clone {metric}")
                 ax.set_ylim(-0.05, 1.05)
-            seaborn.move_legend(axes.flat[0], loc="center left", fontsize="x-small", title_fontsize="x-small")
+            seaborn.move_legend(axes.flat[0], loc="lower left", fontsize="x-small", title_fontsize="x-small")
             matplotlib.pyplot.tight_layout()
             step00.save_figure(fig, f"{directory}/Clone-{metric}-Box", figure_list)
 
