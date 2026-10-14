@@ -12,6 +12,7 @@ import numpy
 import pandas
 import scipy.stats
 import seaborn
+import statannotations.Annotator
 import tqdm
 import step00
 
@@ -96,6 +97,8 @@ if __name__ == "__main__":
 
             fig, ax = matplotlib.pyplot.subplots(figsize=(18, 18))
             seaborn.violinplot(data=cell_data, x=step00.sample_column, order=individual_list, y=cell_test, hue=step00.sample_column, hue_order=individual_list, palette=palette, inner="box", cut=0, linewidth=2, legend=False, ax=ax)
+            if len(individual_list) > 1:
+                statannotations.Annotator.Annotator(ax, list(itertools.combinations(individual_list, r=2)), data=cell_data, x=step00.sample_column, order=individual_list, y=cell_test, hue=step00.sample_column, hue_order=individual_list).configure(test="Mann-Whitney", comparisons_correction=None, show_test_name=False, text_format="full", fontsize="xx-small", loc="inside").apply_and_annotate()
             counts = cell_data[step00.sample_column].value_counts()
             ax.set_xticks(range(len(individual_list)), [f"{individual}\n(n={counts[individual]})" for individual in individual_list], fontsize="x-small")
             matplotlib.pyplot.xlabel("")
