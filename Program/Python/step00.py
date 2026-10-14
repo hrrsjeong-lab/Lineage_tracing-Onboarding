@@ -22,6 +22,7 @@ path_effects = [matplotlib.patheffects.withStroke(linewidth=5, foreground="white
 
 anndata_compressions = {"compression": "gzip", "compression_opts": 9}
 missing_values = {"", "nan", "nan0", "NaN", "None"}
+missing_color = "lightgray"
 
 sample_column = "Individual"
 covered_column = "Covered"
