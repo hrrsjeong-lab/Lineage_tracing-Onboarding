@@ -21,7 +21,7 @@ float_minimum = sys.float_info.min
 arrowprops = {"arrowstyle": "-", "color": "silver", "linewidth": 0.5}
 path_effects = [matplotlib.patheffects.withStroke(linewidth=5, foreground="white")]
 
-anndata_compressions = {"compression": "gzip", "compression_opts": 9}
+anndata_compressions = {"compression": "gzip", "compression_opts": 4}
 missing_values = {"", "nan", "nan0", "NaN", "None"}
 missing_color = "lightgray"
 
