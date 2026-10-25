@@ -6,6 +6,7 @@ import pandas
 import scanpy
 import scipy.sparse
 import tqdm
+import notebook_pdf
 import step00
 
 
@@ -81,48 +82,59 @@ if __name__ == "__main__":
     assert (len(args.input) == len(args.names)), f"{len(args.input)} inputs vs {len(args.names)} names!!"
     assert (len(set(args.names)) == len(args.names)), f"Duplicated names: {args.names}!!"
 
-    sample_data = pandas.read_csv(args.sample, sep="\t", index_col="sample")
-    print(sample_data)
+    notebook = notebook_pdf.Notebook(title="Import H5AD", script=__file__)
 
-    assert (not sample_data.index.duplicated().any()), "Duplicated sample in sample sheet!!"
+    with notebook.cell("Read sample data"):
+        sample_data = pandas.read_csv(args.sample, sep="\t", index_col="sample")
+        print(sample_data)
+        assert (not sample_data.index.duplicated().any()), "Duplicated sample in sample sheet!!"
 
-    adatas: typing.Dict[str, anndata.AnnData] = dict()
-    for filename, name in tqdm.tqdm(list(zip(args.input, args.names))):
-        adatas[name] = read_individual(filename, name, sample_data, args.clone)
+    with notebook.cell("Read input"):
+        adatas: typing.Dict[str, anndata.AnnData] = dict()
+        for filename, name in tqdm.tqdm(list(zip(args.input, args.names))):
+            adatas[name] = read_individual(filename, name, sample_data, args.clone)
 
-    regions = {name: set(adata.var_names) for name, adata in adatas.items()}
-    shared = pandas.DataFrame({a: {b: len(regions[a] & regions[b]) for b in args.names} for a in args.names})
-    print("Shared regions between individuals:")
-    print(shared)
-    union, common = set.union(*regions.values()), set.intersection(*regions.values())
-    print(f"Regions: union {len(union)}, shared by all {len(common)}, join {args.join}")
+    with notebook.cell("Check regions"):
+        regions = {name: set(adata.var_names) for name, adata in adatas.items()}
+        shared = pandas.DataFrame({a: {b: len(regions[a] & regions[b]) for b in args.names} for a in args.names})
+        print("Shared regions between individuals:")
+        print(shared)
+        union, common = set.union(*regions.values()), set.intersection(*regions.values())
+        print(f"Regions: union {len(union)}, shared by all {len(common)}, join {args.join}")
 
-    for key in sorted(set().union(*[set(adata.obsm.keys()) for adata in adatas.values()])):
-        widths = {adata.obsm[key].shape[1] if key in adata.obsm else -1 for adata in adatas.values()}
-        if (len(widths) > 1) or (-1 in widths):
-            print(f"obsm['{key}'] dropped (not shared with the same width)")
-            for adata in adatas.values():
-                if key in adata.obsm:
-                    del adata.obsm[key]
+    with notebook.cell(""):
+        for key in tqdm.tqdm(sorted(set().union(*[set(adata.obsm.keys()) for adata in adatas.values()]))):
+            widths = {adata.obsm[key].shape[1] if key in adata.obsm else -1 for adata in adatas.values()}
+            if (len(widths) > 1) or (-1 in widths):
+                print(f"obsm['{key}'] dropped (not shared with the same width)")
+                for adata in adatas.values():
+                    if key in adata.obsm:
+                        del adata.obsm[key]
 
-    n_obs = sum(adata.n_obs for adata in adatas.values())
-    n_vars = len(union) if args.join == "outer" else len(common)
-    print(f"Expected X: {n_obs} x {n_vars}, {n_obs * n_vars * adatas[args.names[0]].X.dtype.itemsize / 1024 ** 3:.2f} GiB")
+    with notebook.cell("Check size"):
+        n_obs = sum(adata.n_obs for adata in adatas.values())
+        n_vars = len(union) if args.join == "outer" else len(common)
+        print(f"Expected X: {n_obs} x {n_vars}, {n_obs * n_vars * adatas[args.names[0]].X.dtype.itemsize / 1024 ** 3:.2f} GiB")
 
-    output_adata = anndata.concat(adatas, join=args.join, merge="same", label="Individual", index_unique=None, fill_value=numpy.nan)
-    assert (not output_adata.obs_names.duplicated().any()), "Duplicated cells across individuals!!"
+    with notebook.cell("Concat"):
+        output_adata = anndata.concat(adatas, join=args.join, merge="same", label="Individual", index_unique=None, fill_value=numpy.nan)
+        assert (not output_adata.obs_names.duplicated().any()), "Duplicated cells across individuals!!"
 
-    for column in list(output_adata.obs.columns):
-        output_adata.obs[column] = as_writable(output_adata.obs[column])
+        for column in tqdm.tqdm(list(output_adata.obs.columns)):
+            output_adata.obs[column] = as_writable(output_adata.obs[column])
 
-    clone_values = output_adata.obs[args.clone].astype(str)
-    is_missing = output_adata.obs[args.clone].isna() | clone_values.isin(step00.missing_values)
-    output_adata.obs["Individual_clone"] = pandas.Series(numpy.where(is_missing, numpy.nan, output_adata.obs["Individual"].astype(str) + ":" + clone_values), index=output_adata.obs_names, dtype=object)
-    print(pandas.crosstab(output_adata.obs[args.clone].astype(str), output_adata.obs["Individual"]).head(20))
-    print("Cells without clone:", int(is_missing.sum()))
-    print("Clones (global):", output_adata.obs["Individual_clone"].nunique())
+    with notebook.cell("Clone"):
+        clone_values = output_adata.obs[args.clone].astype(str)
+        is_missing = output_adata.obs[args.clone].isna() | clone_values.isin(step00.missing_values)
+        output_adata.obs["Individual_clone"] = pandas.Series(numpy.where(is_missing, numpy.nan, output_adata.obs["Individual"].astype(str) + ":" + clone_values), index=output_adata.obs_names, dtype=object)
+        print(pandas.crosstab(output_adata.obs[args.clone].astype(str), output_adata.obs["Individual"]).head(20))
+        print("Cells without clone:", int(is_missing.sum()))
+        print("Clones (global):", output_adata.obs["Individual_clone"].nunique())
 
-    covered = ~(numpy.isnan(output_adata.X))
-    print(f"Covered fraction (merged): {covered.mean():.4f}")
-    print(output_adata)
-    output_adata.write_h5ad(args.output, **step00.anndata_compressions)
+    with notebook.cell("Save"):
+        covered = ~(numpy.isnan(output_adata.X))
+        print(f"Covered fraction (merged): {covered.mean():.4f}")
+        print(output_adata)
+        output_adata.write_h5ad(args.output, **step00.anndata_compressions)
+
+    notebook.write_pdf(args.output)
