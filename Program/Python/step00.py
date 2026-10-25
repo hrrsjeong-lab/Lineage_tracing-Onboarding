@@ -1,6 +1,7 @@
 import re
 import sys
 import typing
+import anndata
 import matplotlib.patches
 import matplotlib.patheffects
 import matplotlib.pyplot
@@ -97,3 +98,15 @@ def save_figure(fig: matplotlib.figure.Figure, name: str, figure_list: typing.Li
 def chromosome_order(chromosome: str) -> typing.Tuple[int, str]:
     name = re.sub(r"^chr", "", chromosome)
     return (int(name), "") if name.isdigit() else (1000, name)
+
+
+def safe_name(name: str) -> str:
+    return name.replace(' ', '_').replace(',', '_')
+
+
+def split_methyltree(adata: anndata.AnnData) -> typing.List[anndata.AnnData]:
+    results: typing.List[anndata.AnnData] = list()
+    for individual, result in tqdm.tqdm(adata.uns["MethylTree"].items(), total=len(adata.uns["MethylTree"])):
+        mask = (adata.obs[sample_column] == individual).to_numpy()
+        results.append(anndata.AnnData(obs=adata.obs.loc[mask].copy(), obsm={key: numpy.asarray(adata.obsp[key])[numpy.ix_(mask, mask)] for key in adata.obsp.keys()}, uns=dict(result)))
+    return results
