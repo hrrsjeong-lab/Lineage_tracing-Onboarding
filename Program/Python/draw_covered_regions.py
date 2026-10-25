@@ -71,7 +71,7 @@ if __name__ == "__main__":
     individual_list = sorted(set(cell_data[step00.sample_column]))
     assert (individual_list == sorted(set(region_data[step00.sample_column]))), "Individuals differ between cell and region tables!!"
 
-    palette = dict(zip(individual_list, itertools.cycle(matplotlib.colors.TABLEAU_COLORS)))
+    palette = dict(zip(individual_list, itertools.cycle(matplotlib.colors.XKCD_COLORS)))
     print("Individual:", len(individual_list), palette)
 
     assert all(column in cell_data.columns for column in cell_test_list), "Missing cell QC columns!!"
