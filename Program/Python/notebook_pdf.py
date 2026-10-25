@@ -226,6 +226,9 @@ class Notebook:
         if not ((0 < image_width <= 1) and (0 < image_height <= 1)):
             raise ValueError(f"image_width={image_width} and image_height={image_height} must be in (0, 1]")
 
+        if path.endswith(".tsv.gz"):
+            path, _ = os.path.splitext(path)
+
         filename, _ = os.path.splitext(path)
         path = filename + ".pdf"
 
