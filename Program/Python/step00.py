@@ -41,6 +41,7 @@ def check_suffix(filename: str, suffixes: typing.Set[str]) -> None:
 def check_suffixes(filenames: typing.List[str], suffixes: typing.Set[str]) -> None:
     for filename in tqdm.tqdm(filenames):
         check_suffix(filename, suffixes)
+    return
 
 
 def check_cpus(cpus: int) -> None:
