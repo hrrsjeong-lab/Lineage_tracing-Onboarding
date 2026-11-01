@@ -29,7 +29,7 @@ def clone_codes(clones: pandas.Series) -> typing.Tuple[numpy.ndarray, typing.Lis
     counts = clones.value_counts()
     clones = clones.where(clones.map(lambda x: (x is not None) and (counts.get(x, 0) >= 2)), None)
     clone_order = list(dict.fromkeys(clones.dropna()))
-    codes = numpy.array([0 if (x is None) else clone_order.index(x) + 1 for x in clones])
+    codes = numpy.array([(0 if (x is None) else clone_order.index(x) + 1) for x in clones])
     return codes, clone_order
 
 
@@ -43,7 +43,7 @@ def mantel_spearman_pvalue(matrix_a: numpy.ndarray, matrix_b: numpy.ndarray, per
 
     generator = numpy.random.default_rng(seed)
     count = 0
-    for _ in range(permutations):
+    for _ in tqdm.trange(permutations):
         permutation = generator.permutation(matrix_a.shape[0])
         if abs(numpy.corrcoef(rank_a[permutation][:, permutation][upper], rank_b)[0, 1]) >= observed:
             count += 1
@@ -95,13 +95,13 @@ if __name__ == "__main__":
     clone_tables: typing.List[pandas.DataFrame] = list()
 
     for file in tqdm.tqdm(args.input):
-        adata = anndata.read_h5ad(file)
-        adatas.append(adata)
+        for adata in step00.split_methyltree(anndata.read_h5ad(file)):
+            adatas.append(adata)
 
-        clone_data = adata.uns["accuracy_table"].copy()
-        clone_data[step00.sample_column] = adata.uns["parameters"]["Individual"]
-        clone_data["Exclude"] = exclude_label(adata.uns["parameters"]["exclude"])
-        clone_tables.append(clone_data)
+            clone_data = adata.uns["accuracy_table"].copy()
+            clone_data[step00.sample_column] = adata.uns["parameters"]["Individual"]
+            clone_data["Exclude"] = exclude_label(adata.uns["parameters"]["exclude"])
+            clone_tables.append(clone_data)
 
     clone_data = pandas.concat(clone_tables, ignore_index=True)
     clone_data["clone"] = clone_data["clone"].astype(str)
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         for adata in tqdm.tqdm(adatas):
             parameters = adata.uns["parameters"]
             individual = parameters["Individual"]
-            name = f"{individual}-{exclude_label(parameters['exclude']).replace(' ', '_').replace(',', '_')}"
+            name = f"{individual}-{step00.safe_name(exclude_label(parameters['exclude']))}"
             accuracy = adata.uns["accuracy"]
 
             order = numpy.argsort(adata.obs["MethylTree_order"].to_numpy())

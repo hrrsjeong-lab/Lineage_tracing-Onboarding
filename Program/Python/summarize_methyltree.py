@@ -18,10 +18,10 @@ if __name__ == "__main__":
 
     rows: typing.List[typing.Dict[str, typing.Any]] = list()
     for file in tqdm.tqdm(args.input):
-        adata = anndata.read_h5ad(file)
-        accuracy_data = adata.uns["accuracy_table"]
-        row = {"File": file.split("/")[-1]} | dict(adata.uns["parameters"]) | {"n_clones": len(accuracy_data), "n_clonal_cells": int(accuracy_data["clone_size"].sum())} | dict(adata.uns["accuracy"])
-        rows.append(row)
+        for adata in step00.split_methyltree(anndata.read_h5ad(file)):
+            accuracy_data = adata.uns["accuracy_table"]
+            row = {"File": file.split("/")[-1]} | dict(adata.uns["parameters"]) | {"n_clones": len(accuracy_data), "n_clonal_cells": int(accuracy_data["clone_size"].sum())} | dict(adata.uns["accuracy"])
+            rows.append(row)
 
     output_data = pandas.DataFrame(rows).sort_values(["Individual", "exclude"])
     print(output_data)
