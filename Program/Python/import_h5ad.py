@@ -36,7 +36,7 @@ def read_individual(filename: str, name: str, sample_data: pandas.DataFrame, clo
     assert (not missing), f"{name}: {len(missing)} cells are missing from sample sheet: {missing}!!"
     sheet = sample_data.loc[adata.obs_names]
 
-    for column in tqdm.tqdm(list(sheet.columns)):
+    for column in tqdm.tqdm(list(sheet.columns), postfix=step00.main_file()):
         if column in adata.obs.columns:
             mismatch = (adata.obs[column].astype(str) != sheet[column].astype(str)).sum()
             print(f"obs['{column}'] kept; {mismatch} cells differ from sample sheet")
@@ -47,11 +47,11 @@ def read_individual(filename: str, name: str, sample_data: pandas.DataFrame, clo
     assert (clone in adata.obs.columns), f"{name}: {clone} is not in obs!!"
     print(adata.obs[clone].value_counts(dropna=False))
 
-    for key in tqdm.tqdm(list(adata.obsp.keys())):
+    for key in tqdm.tqdm(list(adata.obsp.keys()), postfix=step00.main_file()):
         print(f"obsp['{key}'] dropped (cell-by-cell within {name})")
         del adata.obsp[key]
 
-    for key in tqdm.tqdm(list(adata.obsm.keys())):
+    for key in tqdm.tqdm(list(adata.obsm.keys()), postfix=step00.main_file()):
         if adata.obsm[key].shape[1] == adata.n_obs:
             print(f"obsm['{key}'] dropped (cell-by-cell within {name})")
             del adata.obsm[key]
@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     with notebook.cell("Read input"):
         adatas: typing.Dict[str, anndata.AnnData] = dict()
-        for filename, name in tqdm.tqdm(list(zip(args.input, args.names))):
+        for filename, name in tqdm.tqdm(list(zip(args.input, args.names)), postfix=step00.main_file()):
             adatas[name] = read_individual(filename, name, sample_data, args.clone)
 
     with notebook.cell("Check regions"):
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         print(f"Regions: union {len(union)}, shared by all {len(common)}, join {args.join}")
 
     with notebook.cell(""):
-        for key in tqdm.tqdm(sorted(set().union(*[set(adata.obsm.keys()) for adata in adatas.values()]))):
+        for key in tqdm.tqdm(sorted(set().union(*[set(adata.obsm.keys()) for adata in adatas.values()])), postfix=step00.main_file()):
             widths = {adata.obsm[key].shape[1] if key in adata.obsm else -1 for adata in adatas.values()}
             if (len(widths) > 1) or (-1 in widths):
                 print(f"obsm['{key}'] dropped (not shared with the same width)")
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         output_adata = anndata.concat(adatas, join=args.join, merge="same", label="Individual", index_unique=None, fill_value=numpy.nan)
         assert (not output_adata.obs_names.duplicated().any()), "Duplicated cells across individuals!!"
 
-        for column in tqdm.tqdm(list(output_adata.obs.columns)):
+        for column in tqdm.tqdm(list(output_adata.obs.columns), postfix=step00.main_file()):
             output_adata.obs[column] = as_writable(output_adata.obs[column])
 
     with notebook.cell("Clone"):
