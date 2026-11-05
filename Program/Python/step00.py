@@ -17,7 +17,6 @@ cpus_error_message = "CPUs must be positive!!"
 default_error_message = "Something went wrong!!"
 
 matplotlib_parameters: typing.Dict[str, typing.Any] = {"font.size": 50, "axes.labelsize": 50, "axes.titlesize": 60, "figure.titlesize": 60, "xtick.labelsize": 40, "ytick.labelsize": 40, "legend.fontsize": 20, "legend.title_fontsize": 25, "figure.dpi": 600, "text.color": "black", "font.family": "sans-serif", "pdf.fonttype": 42, "ps.fonttype": 42, "pdf.compression": 9}
-metadata = {"File": __file__, "Timestamp": datetime.datetime.now()}
 suffixes = ["pdf", "png"]
 
 epsilon = sys.float_info.epsilon
@@ -27,7 +26,7 @@ arrowprops = {"arrowstyle": "-", "color": "silver", "linewidth": 0.5}
 path_effects = [matplotlib.patheffects.withStroke(linewidth=5, foreground="white")]
 
 anndata_compressions = {"compression": "gzip", "compression_opts": 4}
-missing_values = {"", "nan", "nan0", "NaN", "None"}
+missing_values = {"", "nan", "nan0", "NaN", "None", "none"}
 missing_color = "lightgray"
 
 sample_column = "Individual"
@@ -35,16 +34,29 @@ covered_column = "Covered"
 methylation_column = "Methylation"
 
 
+def main_file(line: bool = True) -> str:
+    path = getattr(sys.modules.get("__main__"), "__file__", None)
+    if path is None:
+        return "<interactive>"
+    path = path if path.startswith("<") else os.path.abspath(path)
+    if not line:
+        return path
+    frame = sys._getframe(1)
+    while (frame is not None) and (frame.f_globals.get("__name__") != "__main__"):
+        frame = frame.f_back
+    return path if (frame is None) else f"{path}:{frame.f_lineno}"
+
+
 def check_suffix(filename: str, suffixes: typing.Set[str]) -> None:
     filename = filename.lower()
-    for suffix in suffixes:
+    for suffix in tqdm.tqdm(suffixes, postfix=main_file()):
         if filename.endswith(suffix.lower()):
             return
     raise ValueError(f"{filename} must be ended with one of {sorted(suffixes)}!!")
 
 
 def check_suffixes(filenames: typing.List[str], suffixes: typing.Set[str]) -> None:
-    for filename in tqdm.tqdm(filenames):
+    for filename in tqdm.tqdm(filenames, postfix=main_file()):
         check_suffix(filename, suffixes)
     return
 
@@ -94,7 +106,7 @@ def pvalue_format(p_value: float) -> str:
 
 
 def figure_metadata(extra: typing.Optional[typing.Mapping[str, typing.Any]] = None) -> typing.Dict[str, str]:
-    information = {"Script": os.path.abspath(sys.argv[0]), "Command": shlex.join(sys.argv), "Timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
+    information = {"Script": main_file(), "Command": shlex.join(sys.argv), "Timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
     if extra is not None:
         information.update({str(key): str(value) for key, value in extra.items()})
     return information
@@ -102,7 +114,7 @@ def figure_metadata(extra: typing.Optional[typing.Mapping[str, typing.Any]] = No
 
 def save_figure(fig: matplotlib.figure.Figure, name: str, figure_list: typing.List[str], extra_metadata: typing.Optional[typing.Mapping[str, typing.Any]] = None) -> None:
     information = figure_metadata(extra_metadata)
-    for suffix in tqdm.tqdm(suffixes):
+    for suffix in tqdm.tqdm(suffixes, postfix=main_file()):
         assert (f"{name}.{suffix}" not in figure_list), f"{name}.{suffix} is duplicated!!"
         figure_list.append(f"{name}.{suffix}")
         with warnings.catch_warnings():
@@ -122,7 +134,7 @@ def safe_name(name: str) -> str:
 
 def split_methyltree(adata: anndata.AnnData) -> typing.List[anndata.AnnData]:
     results: typing.List[anndata.AnnData] = list()
-    for individual, result in tqdm.tqdm(adata.uns["MethylTree"].items(), total=len(adata.uns["MethylTree"])):
+    for individual, result in tqdm.tqdm(adata.uns["MethylTree"].items(), total=len(adata.uns["MethylTree"]), postfix=main_file()):
         mask = (adata.obs[sample_column] == individual).to_numpy()
         results.append(anndata.AnnData(obs=adata.obs.loc[mask].copy(), obsm={key: numpy.asarray(adata.obsp[key])[numpy.ix_(mask, mask)] for key in adata.obsp.keys()}, uns=dict(result)))
     return results
