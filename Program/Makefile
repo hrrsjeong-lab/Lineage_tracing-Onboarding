@@ -26,23 +26,23 @@ SEX_MODES = IncludeSex ExcludeSex
 
 # Options
 EXCLUDE_IncludeSex =
-EXCLUDE_ExcludeSex = chrX chrY
+EXCLUDE_ExcludeSex = chrX chrY chrM
 LOGGING = 1>$(abspath $@).log 2>&1
 LOGGING_DIR = 1>$(abspath $(@D)).log 2>&1
 LOGGING_TEE = 2>&1 | tee $(abspath $@).log
 
-all: test optimal step01 step02 step03 step04
+all: test optimal step01 step02 step03# step04
 	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: all
 
 clean:
 .PHONY: clean
 
-test: step01-test step02-test step03-test step04-test
+test: step01-test step02-test step03-test# step04-test
 	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: test
 
-optimal: step01-optimal step02-optimal step03-optimal step04-optimal
+optimal: step01-optimal step02-optimal step03-optimal# step04-optimal
 	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
 .PHONY: optimal
 
@@ -75,7 +75,7 @@ Output/02_QC_covered_regions/%.region.tsv.gz: Python/qc_covered_regions.py Outpu
 	$(SLURM) $(PYTHON) $(abspath $^ $@) --target "region" $(LOGGING)
 
 Output/02_QC_covered_regions/Figures/%.zip: Python/draw_covered_regions.py Output/02_QC_covered_regions/%.cell.tsv.gz Output/02_QC_covered_regions/%.region.tsv.gz | Output/02_QC_covered_regions/Figures
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING_TEE)
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
 
 step02-test: Output/02_QC_covered_regions/Test.cell.tsv.gz Output/02_QC_covered_regions/Test.region.tsv.gz Output/02_QC_covered_regions/Figures/Test.zip
 step02-optimal: Output/02_QC_covered_regions/$(OPTIMAL).cell.tsv.gz Output/02_QC_covered_regions/$(OPTIMAL).region.tsv.gz Output/02_QC_covered_regions/Figures/$(OPTIMAL).zip
@@ -99,7 +99,7 @@ Output/03_MethylTree/%.tsv.gz: Python/summarize_methyltree.py $(addprefix Output
 	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
 
 Output/03_MethylTree/Figures/%.zip: Python/draw_methyltree.py $(addprefix Output/03_MethylTree/%.,$(addsuffix .h5ad,$(SEX_MODES))) | Output/03_MethylTree/Figures
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING_TEE)
 
 step03-test: $(addprefix Output/03_MethylTree/Test.,$(addsuffix .h5ad,$(SEX_MODES))) Output/03_MethylTree/Test.tsv.gz Output/03_MethylTree/Figures/Test.zip
 step03-optimal: $(addprefix Output/03_MethylTree/$(OPTIMAL).,$(addsuffix .h5ad,$(SEX_MODES))) Output/03_MethylTree/$(OPTIMAL).tsv.gz Output/03_MethylTree/Figures/$(OPTIMAL).zip
