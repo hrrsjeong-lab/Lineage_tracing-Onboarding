@@ -75,7 +75,7 @@ Output/02_QC_covered_regions/%.region.tsv.gz: Python/qc_covered_regions.py Outpu
 	$(SLURM) $(PYTHON) $(abspath $^ $@) --target "region" $(LOGGING)
 
 Output/02_QC_covered_regions/Figures/%.zip: Python/draw_covered_regions.py Output/02_QC_covered_regions/%.cell.tsv.gz Output/02_QC_covered_regions/%.region.tsv.gz | Output/02_QC_covered_regions/Figures
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING_TEE)
 
 step02-test: Output/02_QC_covered_regions/Test.cell.tsv.gz Output/02_QC_covered_regions/Test.region.tsv.gz Output/02_QC_covered_regions/Figures/Test.zip
 step02-optimal: Output/02_QC_covered_regions/$(OPTIMAL).cell.tsv.gz Output/02_QC_covered_regions/$(OPTIMAL).region.tsv.gz Output/02_QC_covered_regions/Figures/$(OPTIMAL).zip

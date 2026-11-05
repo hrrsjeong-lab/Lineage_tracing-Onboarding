@@ -1,6 +1,10 @@
+import datetime
+import os
 import re
+import shlex
 import sys
 import typing
+import warnings
 import anndata
 import matplotlib.patches
 import matplotlib.patheffects
@@ -12,7 +16,8 @@ import tqdm
 cpus_error_message = "CPUs must be positive!!"
 default_error_message = "Something went wrong!!"
 
-matplotlib_parameters: typing.Dict[str, typing.Any] = {"font.size": 50, "axes.labelsize": 50, "axes.titlesize": 60, "figure.titlesize": 60, "xtick.labelsize": 40, "ytick.labelsize": 40, "legend.fontsize": 20, "legend.title_fontsize": 25, "figure.dpi": 300, "text.color": "black", "font.family": "sans-serif", "pdf.fonttype": 42, "ps.fonttype": 42, "pdf.compression": 9}
+matplotlib_parameters: typing.Dict[str, typing.Any] = {"font.size": 50, "axes.labelsize": 50, "axes.titlesize": 60, "figure.titlesize": 60, "xtick.labelsize": 40, "ytick.labelsize": 40, "legend.fontsize": 20, "legend.title_fontsize": 25, "figure.dpi": 600, "text.color": "black", "font.family": "sans-serif", "pdf.fonttype": 42, "ps.fonttype": 42, "pdf.compression": 9}
+metadata = {"File": __file__, "Timestamp": datetime.datetime.now()}
 suffixes = ["pdf", "png"]
 
 epsilon = sys.float_info.epsilon
@@ -88,11 +93,21 @@ def pvalue_format(p_value: float) -> str:
     raise ValueError(default_error_message)
 
 
-def save_figure(fig: matplotlib.figure.Figure, name: str, figure_list: typing.List[str]) -> None:
+def figure_metadata(extra: typing.Optional[typing.Mapping[str, typing.Any]] = None) -> typing.Dict[str, str]:
+    information = {"Script": os.path.abspath(sys.argv[0]), "Command": shlex.join(sys.argv), "Timestamp": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
+    if extra is not None:
+        information.update({str(key): str(value) for key, value in extra.items()})
+    return information
+
+
+def save_figure(fig: matplotlib.figure.Figure, name: str, figure_list: typing.List[str], extra_metadata: typing.Optional[typing.Mapping[str, typing.Any]] = None) -> None:
+    information = figure_metadata(extra_metadata)
     for suffix in tqdm.tqdm(suffixes):
         assert (f"{name}.{suffix}" not in figure_list), f"{name}.{suffix} is duplicated!!"
         figure_list.append(f"{name}.{suffix}")
-        fig.savefig(figure_list[-1])
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Unknown infodict keyword", category=UserWarning)
+            fig.savefig(figure_list[-1], metadata=information)
     matplotlib.pyplot.close(fig)
 
 
