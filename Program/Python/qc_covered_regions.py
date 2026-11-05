@@ -41,9 +41,11 @@ if __name__ == "__main__":
     print(chromosomes.value_counts())
     for column in tqdm.tqdm(chromosome_columns):
         input_adata.var[column] = (chromosomes == column).to_numpy()
+    print(input_adata)
 
     input_adata.layers[step00.covered_column] = (~numpy.isnan(input_adata.X)).astype(numpy.float32)
     input_adata.layers[step00.methylation_column] = numpy.nan_to_num(input_adata.X, nan=0.0)
+    print(input_adata)
 
     if args.target == "cell":
         covered_data, _ = scanpy.pp.calculate_qc_metrics(input_adata, layer=step00.covered_column, qc_vars=chromosome_columns, percent_top=None, log1p=True, inplace=False)
