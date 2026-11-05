@@ -86,7 +86,7 @@ if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as directory:
         figure_list: typing.List[str] = list()
 
-        for cell_test in tqdm.tqdm(cell_test_list):
+        for cell_test in tqdm.tqdm(cell_test_list, postfix=step00.main_file()):
             fig, ax = matplotlib.pyplot.subplots(figsize=(24, 18))
             seaborn.histplot(data=cell_data, x=cell_test, hue=step00.sample_column, hue_order=individual_list, palette=palette, stat="count", bins=50, multiple="stack", linewidth=1, edgecolor="white", ax=ax)
             seaborn.move_legend(ax, loc="upper right", fontsize="x-small", title_fontsize="x-small")
@@ -131,7 +131,7 @@ if __name__ == "__main__":
             matplotlib.pyplot.tight_layout()
             step00.save_figure(fig, f"{directory}/Cell-{cell_test}-Heatmap", figure_list)
 
-        for cell_test_1, cell_test_2 in tqdm.tqdm(cell_pair_list):
+        for cell_test_1, cell_test_2 in tqdm.tqdm(cell_pair_list, postfix=step00.main_file()):
             g = seaborn.FacetGrid(data=cell_data, col=step00.sample_column, col_order=individual_list, hue=step00.sample_column, hue_order=individual_list, palette=palette, col_wrap=min(2, len(individual_list)), height=12, aspect=1)
             g.map(seaborn.scatterplot, cell_test_1, cell_test_2, s=80, edgecolor="white", linewidth=1)
             g.set_titles("{col_name}")
@@ -139,7 +139,7 @@ if __name__ == "__main__":
             g.tight_layout()
             step00.save_figure(g.figure, f"{directory}/Cell-{cell_test_1}-{cell_test_2}-Scatter", figure_list)
 
-        for region_test in tqdm.tqdm(region_test_list):
+        for region_test in tqdm.tqdm(region_test_list, postfix=step00.main_file()):
             step00.save_figure(draw_facet_histogram(region_data, region_test, individual_list, palette, "Proportion of regions"), f"{directory}/Region-{region_test}-HistMultiple", figure_list)
 
             fig, ax = matplotlib.pyplot.subplots(figsize=(24, 18))
@@ -176,5 +176,5 @@ if __name__ == "__main__":
         step00.save_figure(fig, f"{directory}/Region-Chromosome-Heatmap", figure_list)
 
         with zipfile.ZipFile(args.output, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
-            for figure in tqdm.tqdm(figure_list):
+            for figure in tqdm.tqdm(figure_list, postfix=step00.main_file()):
                 zip_file.write(figure, arcname=os.path.basename(figure))

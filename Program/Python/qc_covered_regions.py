@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     chromosomes = pandas.Series(list(map(get_chromosome, input_adata.var_names)), index=input_adata.var_names)
     print(chromosomes.value_counts())
-    for column in tqdm.tqdm(chromosome_columns):
+    for column in tqdm.tqdm(chromosome_columns, postfix=step00.main_file()):
         input_adata.var[column] = (chromosomes == column).to_numpy()
     print(input_adata)
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         output_data["n_covered_regions"] = covered_data["n_genes_by_counts"]
         output_data["log1p_n_covered_regions"] = covered_data["log1p_n_genes_by_counts"]
         output_data["mean_methylation"] = mean_methylation(methylation_data["total_counts"], covered_data["n_genes_by_counts"])
-        for column in tqdm.tqdm(chromosome_columns):
+        for column in tqdm.tqdm(chromosome_columns, postfix=step00.main_file()):
             output_data[f"n_covered_regions_{column}"] = covered_data[f"total_counts_{column}"].astype(int)
             output_data[f"pct_covered_regions_{column}"] = covered_data[f"pct_counts_{column}"]
 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
         print(output_data.groupby(step00.sample_column).describe().T)
     elif args.target == "region":
         region_list = list()
-        for name in tqdm.tqdm(sorted(input_adata.obs[step00.sample_column].unique())):
+        for name in tqdm.tqdm(sorted(input_adata.obs[step00.sample_column].unique()), postfix=step00.main_file()):
             adata = input_adata[input_adata.obs[step00.sample_column] == name]
             _, covered_data = scanpy.pp.calculate_qc_metrics(adata, layer=step00.covered_column, percent_top=None, log1p=True, inplace=False)
             _, methylation_data = scanpy.pp.calculate_qc_metrics(adata, layer=step00.methylation_column, percent_top=None, log1p=False, inplace=False)
