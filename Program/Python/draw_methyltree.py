@@ -159,23 +159,19 @@ if __name__ == "__main__":
             pair_data = pandas.DataFrame({"Shared regions": shared_sites.to_numpy()[upper], "Corrected similarity": similarity.to_numpy()[upper], "Pair": numpy.where((codes[upper[0]] > 0) & (codes[upper[0]] == codes[upper[1]]), "Same clone", "Different clone")})
             correlation, p_value = scipy.stats.spearmanr(pair_data["Shared regions"], pair_data["Corrected similarity"])
             mantel_p_value = mantel_spearman_pvalue(shared_sites.to_numpy(), similarity.to_numpy(), args.permutations, 42)
-            print(individual, "pairs:", pair_data["Pair"].value_counts().to_dict(), "/ Spearman r:", correlation, "/ p-value", p_value, "/ Mantel p:", mantel_p_value)
+            print(individual, "pairs:", pair_data["Pair"].value_counts().to_dict(), "/ Spearman r:", correlation, "/ p-value", step00.pvalue_format(p_value=p_value), "/ Mantel p:", step00.pvalue_format(p_value=mantel_p_value))
 
             fig, ax = matplotlib.pyplot.subplots(figsize=(18, 18))
             seaborn.regplot(data=pair_data, x="Shared regions", y="Corrected similarity", color=palette[individual], fit_reg=True, robust=True, scatter_kws=dict(s=40, linewidth=0, rasterized=True), ax=ax)
-            matplotlib.pyplot.text(numpy.median(pair_data["Shared regions"]), numpy.median(pair_data["Corrected similarity"]), f"Spearman r={correlation:.3f}, p={p_value:.1e}", color="black", path_effects=step00.path_effects, fontsize="x-small", horizontalalignment="center", verticalalignment="center")
+            matplotlib.pyplot.text(numpy.median(pair_data["Shared regions"]), numpy.median(pair_data["Corrected similarity"]), f"Spearman r={correlation:.3f}, p={step00.pvalue_format(p_value=p_value)}", color="black", path_effects=step00.path_effects, fontsize="x-small", horizontalalignment="center", verticalalignment="center")
             matplotlib.pyplot.tight_layout()
             step00.save_figure(fig=fig, name=f"{directory}/{individual}-{step00.safe_name(exclude_label(parameters['exclude']))}-SharedSites-Similarity-Scatter", figure_list=figure_list)
 
-            """
-            fig, ax = matplotlib.pyplot.subplots(figsize=(24, 18))
-            seaborn.scatterplot(data=pair_data, x="Shared regions", y="Corrected similarity", hue="Pair", hue_order=["Different clone", "Same clone"], palette={"Different clone": step00.missing_color, "Same clone": palette[individual]}, s=40, linewidth=0, rasterized=True, ax=ax)
-            seaborn.move_legend(ax, loc="upper right", fontsize="x-small", title_fontsize="x-small")
-            ax.text(0.01, 0.99, f"Spearman r = {correlation:.3f} (all {len(pair_data)} pairs)", fontsize="x-small", horizontalalignment="left", verticalalignment="top", transform=ax.transAxes, path_effects=step00.path_effects)
-            matplotlib.pyplot.title(f"{individual} / {exclude_label(parameters['exclude'])}", fontsize="small")
-            matplotlib.pyplot.tight_layout()
-            step00.save_figure(fig, f"{directory}/{name}-SharedSites-Similarity-Scatter", figure_list)
+            g = seaborn.lmplot(data=pair_data, x="Shared regions", y="Corrected similarity", hue="Pair", hue_order=["Different clone", "Same clone"], palette={"Different clone": step00.missing_color, "Same clone": palette[individual]}, height=18, aspect=1, legend=True, legend_out=False, scatter=True, fit_reg=True, robust=True, scatter_kws=dict(s=5))
+            g.ax.text(0.5, 0.5, f"Spearman r={correlation:.3f}, p={step00.pvalue_format(p_value=p_value)}", color="black", path_effects=step00.path_effects, fontsize="x-small", horizontalalignment="center", verticalalignment="center")
+            step00.save_figure(fig=g.figure, name=f"{directory}/{individual}-{step00.safe_name(exclude_label(parameters['exclude']))}-SharedSites-Similarity-Regression", figure_list=figure_list)
 
+            """
         for metric in tqdm.tqdm(metric_list):
             observed_data = clone_data[[step00.sample_column, "Exclude", "clone", "clone_size", metric]].assign(Type="Observed")
             random_data = clone_data[[step00.sample_column, "Exclude", "clone", "clone_size", f"random_{metric}"]].rename(columns={f"random_{metric}": metric}).assign(Type="Random")
