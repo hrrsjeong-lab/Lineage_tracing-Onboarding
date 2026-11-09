@@ -140,11 +140,9 @@ if __name__ == "__main__":
                     fig.suptitle(t=f"{individual} / {exclude_label(exclude=parameters['exclude'])}\ncell n={parameters['n_cells']} / region n={parameters['n_regions']}")
                     fig.tight_layout()
                     step00.save_figure(fig=fig, name=f"{directory}/{name}-{heatmap_name}-Heatmap", figure_list=figure_list)
-                    break
 
                 pair_data = pandas.DataFrame(data={"Shared regions": shared_sites.to_numpy()[upper], "Corrected similarity": similarity.to_numpy()[upper], "Pair": numpy.where((codes[upper[0]] > 0) & (codes[upper[0]] == codes[upper[1]]), "Same clone", "Different clone")})
                 pair_inputs.append((individual, name, pair_data, shared_sites.to_numpy(), similarity.to_numpy()))
-                break
 
         with notebook.cell(title="Shared covered regions vs corrected similarity", note=f"Spearman p-value treats cell pairs as independent; Mantel p-value permutes cells ({args.permutations} permutations)."):
             for individual, name, pair_data, shared_matrix, similarity_matrix in tqdm.tqdm(iterable=pair_inputs, postfix=step00.main_file()):
@@ -161,7 +159,6 @@ if __name__ == "__main__":
                 g = seaborn.lmplot(data=pair_data, x="Shared regions", y="Corrected similarity", hue="Pair", hue_order=["Different clone", "Same clone"], palette={"Different clone": step00.missing_color, "Same clone": palette[individual]}, height=18, aspect=1, legend=True, facet_kws={"legend_out": False}, scatter=True, fit_reg=True, robust=True, scatter_kws=dict(s=5))
                 g.ax.text(x=0.5, y=0.5, s=f"Spearman r={correlation:.3f}, p={step00.pvalue_format(p_value=p_value)}", transform=g.ax.transAxes, color="black", path_effects=step00.path_effects, fontsize="x-small", horizontalalignment="center", verticalalignment="center")
                 step00.save_figure(fig=g.figure, name=f"{directory}/{name}-SharedSites-Similarity-Regression", figure_list=figure_list)
-                break
 
         with notebook.cell(title="Observed vs Random"):
             for metric in tqdm.tqdm(metric_list, postfix=step00.main_file()):
@@ -204,7 +201,6 @@ if __name__ == "__main__":
                 g.set(xlim=(-0.05, 1.05), ylim=(-0.05, 1.05))
                 g.tight_layout()
                 step00.save_figure(g.figure, f"{directory}/Clone-{metric}-Exclude-Scatter", figure_list)
-                break
 
         with notebook.cell(title="Save"):
             with zipfile.ZipFile(file=args.output, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zip_file:
