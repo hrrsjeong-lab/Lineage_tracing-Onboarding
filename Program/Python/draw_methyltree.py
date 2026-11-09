@@ -148,7 +148,7 @@ if __name__ == "__main__":
             for individual, name, pair_data, shared_matrix, similarity_matrix in tqdm.tqdm(iterable=pair_inputs, postfix=step00.main_file()):
                 correlation, p_value = scipy.stats.spearmanr(a=pair_data["Shared regions"], b=pair_data["Corrected similarity"])
                 mantel_p_value = mantel_spearman_pvalue(matrix_a=shared_matrix, matrix_b=similarity_matrix, permutations=args.permutations, seed=42)
-                print(name, "pairs:", pair_data["Pair"].value_counts().to_dict(), "/ Spearman r:", step00.pvalue_format(correlation), "/ p-value", step00.pvalue_format(p_value=p_value), "/ Mantel p:", step00.pvalue_format(p_value=mantel_p_value))
+                print(name, "pairs:", pair_data["Pair"].value_counts().to_dict(), "/ Spearman r:", f"{correlation:.3f}", "/ p-value", step00.pvalue_format(p_value=p_value), "/ Mantel p:", step00.pvalue_format(p_value=mantel_p_value))
 
                 fig, ax = matplotlib.pyplot.subplots(figsize=(18, 18))
                 seaborn.regplot(data=pair_data, x="Shared regions", y="Corrected similarity", color=palette[individual], fit_reg=True, robust=True, scatter_kws=dict(s=40, linewidth=0, rasterized=True), ax=ax)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
                 for ax, exclude in zip(axes.flat, exclude_list):
                     drawing_data = long_data.loc[(long_data["Exclude"] == exclude)]
                     seaborn.violinplot(data=drawing_data, x=step00.sample_column, order=individual_list, y=metric, hue="Type", hue_order=["Observed", "Random"], linewidth=2.5, cut=0, inner="box", legend=(ax is axes.flat[0]), ax=ax)
-                    statannotations.Annotator.Annotator(ax, [((individual, "Observed"), (individual, "Random")) for individual in individual_list], data=drawing_data, x=step00.sample_column, order=individual_list, y=metric, hue="Type", hue_order=["Observed", "Random"]).configure(test="Mann-Whitney", text_format="full", hide_non_significant=True, comparisons_correction=None, loc="inside", verbose=1).apply_and_annotate()
+                    statannotations.Annotator.Annotator(ax, [((individual, "Observed"), (individual, "Random")) for individual in individual_list], data=drawing_data, x=step00.sample_column, order=individual_list, y=metric, hue="Type", hue_order=["Observed", "Random"]).configure(test="Mann-Whitney", text_format="star", hide_non_significant=True, comparisons_correction=None, loc="inside", verbose=1, fontsize="xx-small").apply_and_annotate()
                     counts = drawing_data.loc[(drawing_data["Type"] == "Observed")].groupby(step00.sample_column).size()
                     ax.set_xticks(range(len(individual_list)), [f"{individual}\n({counts.get(individual, 0)} clones)" for individual in individual_list], fontsize="x-small", rotation=90)
                     ax.set_title(exclude, fontsize="small")
