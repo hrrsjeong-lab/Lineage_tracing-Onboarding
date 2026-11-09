@@ -6,7 +6,7 @@ MEMS = 100
 MEM_PER_CPU = $(shell echo '$(MEMS)/$(CPUS)' | bc)
 
 # Programs
-SLURM = srun --chdir=$(abspath .) --cpus-per-task=$(CPUS) --export=ALL --job-name="$(PROJECT)_$(@F)" --mem=$(MEMS)G --mail-user="jaewoong@gist.ac.kr" --mail-type=FAIL
+SLURM = srun --chdir=$(abspath .) --cpus-per-task=$(CPUS) --export=ALL --job-name="$(PROJECT)_$(@F)" --mem=$(MEMS)G --mail-user="jaewoong@localhost" --mail-type=END,FAIL
 PYTHON = /home/Live/jaewoong/Lineage_tracing-Onboarding/.venv/bin/python3 -B -u -X faulthandler
 R = /usr/bin/env RENV_CONFIG_SYNCHRONIZED_CHECK=FALSE /usr/bin/Rscript
 rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
@@ -99,7 +99,7 @@ Output/03_MethylTree/%.tsv.gz: Python/summarize_methyltree.py $(addprefix Output
 	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
 
 Output/03_MethylTree/Figures/%.zip: Python/draw_methyltree.py $(addprefix Output/03_MethylTree/%.,$(addsuffix .h5ad,$(SEX_MODES))) | Output/03_MethylTree/Figures
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING_TEE)
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
 
 step03-test: $(addprefix Output/03_MethylTree/Test.,$(addsuffix .h5ad,$(SEX_MODES))) Output/03_MethylTree/Test.tsv.gz Output/03_MethylTree/Figures/Test.zip
 step03-optimal: $(addprefix Output/03_MethylTree/$(OPTIMAL).,$(addsuffix .h5ad,$(SEX_MODES))) Output/03_MethylTree/$(OPTIMAL).tsv.gz Output/03_MethylTree/Figures/$(OPTIMAL).zip
