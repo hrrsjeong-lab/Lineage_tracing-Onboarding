@@ -6,7 +6,7 @@ MEMS = 100
 MEM_PER_CPU = $(shell echo '$(MEMS)/$(CPUS)' | bc)
 
 # Programs
-SLURM = srun --chdir=$(abspath .) --cpus-per-task=$(CPUS) --export=ALL --job-name="$(PROJECT)_$(@F)" --mem=$(MEMS)G --mail-user="jaewoong@localhost" --mail-type=END,FAIL
+SLURM = srun --chdir=$(abspath .) --cpus-per-task=$(CPUS) --export=ALL --job-name="$(PROJECT)_$(@F)" --mem=$(MEMS)G --mail-user="$(MAIL)" --mail-type=FAIL
 PYTHON = /home/Live/jaewoong/Lineage_tracing-Onboarding/.venv/bin/python3 -B -u -X faulthandler
 R = /usr/bin/env RENV_CONFIG_SYNCHRONIZED_CHECK=FALSE /usr/bin/Rscript
 rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
@@ -18,6 +18,7 @@ DARLIN_SAMPLE = $(DARLIN_DIR)/df_sample/sample_sheet.tsv.gz
 DARLIN_H5AD = $(addprefix $(DARLIN_DIR)/out_dir/mouse_,$(addsuffix _neutral_thresh_DARLIN_HSC_BM_0.66_0.92_readcutoff3_minCov0.1_met_ExcludeSex0.h5ad,$(MICE)))
 
 # Constants
+MAIL = jaewoong@localhost
 PROJECT = Lineage
 MICE = LL731 LL901 LL653E1 LL653E6
 OPTIMAL = Darlin
@@ -32,29 +33,29 @@ LOGGING_DIR = 1>$(abspath $(@D)).log 2>&1
 LOGGING_TEE = 2>&1 | tee $(abspath $@).log
 
 all: test optimal step01 step02 step03# step04
-	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
+	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "$(MAIL)"
 .PHONY: all
 
 clean:
 .PHONY: clean
 
-test: step01-test step02-test step03-test# step04-test
-	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
+test: step01-test step02-test step03-test step04-test
+	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "$(MAIL)"
 .PHONY: test
 
-optimal: step01-optimal step02-optimal step03-optimal# step04-optimal
-	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "jaewoong@gist.ac.kr"
+optimal: step01-optimal step02-optimal step03-optimal step04-optimal
+	@date | mail -s "[$(PROJECT)] Making $@ has been finished on $(shell hostname)" "$(MAIL)"
 .PHONY: optimal
 
 # Step 01 (Scanpy import)
 Output/01_Scanpy_import:
 	mkdir -p $@
 
-Output/01_Scanpy_import/Darlin.h5ad: Python/import_h5ad.py $(DARLIN_H5AD) $(DARLIN_SAMPLE) | Output/01_Scanpy_import
-	$(SLURM) $(PYTHON) $(abspath $^ $@) --names $(MICE) --clone "large_clone_id" --join "outer" $(LOGGING)
-
 Output/01_Scanpy_import/Test.h5ad: Python/import_h5ad.py /home/Store/MethylTree/metadata/DARLIN_HSC/downstream_R/out_dir/mouse_LL653E1_neutral_thresh_DARLIN_HSC_BM_0.66_0.92_readcutoff3_minCov0.1_met_ExcludeSex0.h5ad $(DARLIN_SAMPLE) | Output/01_Scanpy_import
 	$(SLURM) $(PYTHON) $(abspath $^ $@) --names LL653E1 --clone "large_clone_id" --join "outer" $(LOGGING)
+
+Output/01_Scanpy_import/Darlin.h5ad: Python/import_h5ad.py $(DARLIN_H5AD) $(DARLIN_SAMPLE) | Output/01_Scanpy_import
+	$(SLURM) $(PYTHON) $(abspath $^ $@) --names $(MICE) --clone "large_clone_id" --join "outer" $(LOGGING)
 
 step01-test: Output/01_Scanpy_import/Test.h5ad
 step01-optimal: Output/01_Scanpy_import/$(OPTIMAL).h5ad
@@ -113,16 +114,10 @@ Output/04_Downsampling:
 Output/04_Downsampling/Figures:
 	mkdir -p $@
 
-Output/04_Downsampling/Darlin.%.tsv.gz: Python/downsample_methyltree.py Output/01_Scanpy_import/Darlin.h5ad | Output/04_Downsampling
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(DOWNSAMPLING_OPTIONS) $(LOGGING)
+Output/04_Downsampling/%.tsv.gz: Python/downsample_methyltree.py Output/01_Scanpy_import/%.h5ad | Output/04_Downsampling
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING_TEE)
 
-Output/04_Downsampling/Test.%.tsv.gz: Python/downsample_methyltree.py Output/01_Scanpy_import/Test.h5ad | Output/04_Downsampling
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(DOWNSAMPLING_OPTIONS) $(LOGGING)
-
-Output/04_Downsampling/Figures/Darlin.zip: Python/draw_downsampling.py $(addprefix Output/04_Downsampling/Darlin.,$(addsuffix .tsv.gz,$(call product,$(MICE),$(KEEP_PERCENTS)))) | Output/04_Downsampling/Figures
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
-
-Output/04_Downsampling/Figures/Test.zip: Python/draw_downsampling.py $(addprefix Output/04_Downsampling/Test.LL653E1.,$(addsuffix .tsv.gz,$(TEST_KEEP_PERCENTS))) | Output/04_Downsampling/Figures
+Output/04_Downsampling/Figures/%.zip: Python/draw_downsampling.py Output/04_Downsampling/%.tsv.gz | Output/04_Downsampling/Figures
 	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
 
 step04-test: Output/04_Downsampling/Figures/Test.zip
