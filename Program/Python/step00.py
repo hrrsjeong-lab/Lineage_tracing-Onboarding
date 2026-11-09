@@ -89,18 +89,12 @@ def confidence_ellipse(x: typing.List[float], y: typing.List[float], ax, n_std: 
 
 
 def pvalue_format(p_value: float) -> str:
-    thresholds = [1e-4, 1e-3, 1e-2, 5e-2]
-
     assert (0.0 <= p_value <= 1.0), f"p={p_value} is not a valid p-value!!"
 
-    if p_value > thresholds[-1]:
-        return f"p={p_value:.3f}"
-    elif p_value < thresholds[0]:
-        return f"p={p_value:.1e}"
-
-    for threshold in thresholds:
-        if p_value < threshold:
-            return f"p<{p_value:.3e}"
+    if p_value >= 1e-3:
+        return f"{p_value:.3f}"
+    elif p_value < 1e-3:
+        return f"{p_value:.1e}"
 
     raise ValueError(default_error_message)
 
