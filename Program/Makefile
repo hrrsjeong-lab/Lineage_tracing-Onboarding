@@ -115,7 +115,7 @@ Output/04_Downsampling/Figures:
 	mkdir -p $@
 
 Output/04_Downsampling/%.tsv.gz: Python/downsample_methyltree.py Output/01_Scanpy_import/%.h5ad | Output/04_Downsampling
-	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING_TEE)
+	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
 
 Output/04_Downsampling/Figures/%.zip: Python/draw_downsampling.py Output/04_Downsampling/%.tsv.gz | Output/04_Downsampling/Figures
 	$(SLURM) $(PYTHON) $(abspath $^ $@) $(LOGGING)
